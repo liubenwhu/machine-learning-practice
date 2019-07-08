@@ -14,7 +14,8 @@ feature=orldata.columns.values.tolist()
 
 orldata.dtypes.value_counts()
 
-sample=orldata.iloc[0:100,:]
+sample=orldata.iloc[0:100,:1]
 
-t2=orldata.select_dtypes('object').astype(str)
+t1=orldata.select_dtypes('object').apply(pd.Series.nunique, axis = 0)
+t2=orldata.select_dtypes('int64').apply(pd.Series.nunique, axis = 0)
 
