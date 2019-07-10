@@ -37,14 +37,20 @@ def bin_counting(counts):
     bin_counts = counts.filter(items= ['N+', 'N-', 'log_N+'])
     return counts, bin_counts
 
-
+bin_columns_name1=['pkgname','ver','adunitshowid','mediashowid','apptype','city','reqrealip','imeimd5','idfamd5']
 # bin counts example: device_id
-bin_column = 'pkgname'
-device_clicks = click_counting(sample.filter(items= [bin_column, 'label']), bin_column)
-device_all, device_bin_counts = bin_counting(device_clicks)
 
-#ind=device_all.index.values.tolist()
-#ind=pd.DataFrame(ind,columns=['pkgname'])
-device_all.rename(columns={'index': 'pkgname'}, inplace=True) 
+for i in bin_columns_name1:
+    bin_column = i
+    device_clicks = click_counting(orldata.filter(items= [bin_column, 'label']), bin_column)
+    device_all, device_bin_counts = bin_counting(device_clicks)
 
-result = pd.merge(sample, device_all, how='left', on='pkgname')
+    #ind=device_all.index.values.tolist()
+    #ind=pd.DataFrame(ind,columns=['pkgname'])
+    device_all=device_all.reset_index()
+    device_all.rename(columns={'index': i,'N+':'N+'+i}, inplace=True) 
+
+    orldata = pd.merge(orldata, device_all.iloc[:,[0,4]], how='left', on=i)
+
+orldata.select_dtypes('float64').apply(pd.Series.nunique, axis = 0)
+des=orldata.describe()
