@@ -41,7 +41,7 @@ label=orldata['label']
 
 bin_columns_name1=['pkgname','ver','adunitshowid','mediashowid','apptype','city','reqrealip','imeimd5','idfamd5']
 # bin counts example: device_id
-bin_columns_name2=['ip','openudidmd5','macmd5','model','make','osv']
+bin_columns_name2=['ip','openudidmd5','macmd5','model','make','osv','adidmd5']
 bin_columns_name=bin_columns_name1+bin_columns_name2
 
 oh_columns=['province','dvctype','ntt','carrier','os','orientation','lan']
@@ -65,3 +65,30 @@ orldata.select_dtypes('float64').apply(pd.Series.nunique, axis = 0)
 
 
 orldata_oh=pd.get_dummies(orldata[oh_columns].astype('object'))
+
+orldata=orldata.join(orldata_oh)
+
+orldata=orldata.drop(columns=oh_columns)
+orldata=orldata.drop(columns='sid')
+
+del bin_column
+del bin_columns_name
+del bin_columns_name1
+del bin_columns_name2
+del device_all
+del device_bin_counts
+del device_clicks
+del feature
+del i
+del oh_columns
+del orldata_oh
+del sample
+del t1
+del t2
+
+orldata_v=orldata.values
+del orldata
+from sklearn.preprocessing import MinMaxScaler
+
+#区间缩放，返回值为缩放到[0, 1]区间的数据
+orldata_v=MinMaxScaler().fit_transform(orldata_v)
