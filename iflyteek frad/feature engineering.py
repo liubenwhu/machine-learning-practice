@@ -92,3 +92,40 @@ from sklearn.preprocessing import MinMaxScaler
 
 #区间缩放，返回值为缩放到[0, 1]区间的数据
 orldata_v=MinMaxScaler().fit_transform(orldata_v)
+
+import lightgbm as lgb
+from sklearn.model_selection import train_test_split
+
+y=label.values
+X=orldata_v
+del label
+del orldata_v
+X_train,X_test,y_train,y_test=train_test_split(X,y,random_state=0,test_size=0.2)
+X_train1,X_train2,y_train1,y_train2=train_test_split(X_train,y_train,random_state=0,test_size=0.2)
+
+from sklearn.metrics import f1_score
+def lgb_f1_score(y_hat, data):
+    y_true = data.get_label()
+    y_hat = np.round(y_hat) # scikits f1 doesn't like probabilities
+    return 'f1', f1_score(y_true, y_hat), True
+
+
+train_data=lgb.Dataset(X_train1,label=y_train1)
+validation_data=lgb.Dataset(X_train2,label=y_train2)
+
+
+params = {
+    'task': 'train',
+    'boosting_type': 'gbdt',  # 设置提升类型
+    'objective': 'binary', # 目标函数
+    'metric': {'l2', 'auc'},  # 评估函数
+
+}
+clf=lgb.train(params,train_data,valid_sets=[validation_data])
+y_pred=clf.predict(X_test)
+y_pred[y_pred>0.9]=1
+y_pred[y_pred<0.1]=0
+print(f1_score(y_test, y_pred, average='micro'))
+
+from sklearn.metrics import accuracy_score
+accuracy_score(y_test, y_pred)
