@@ -8,8 +8,9 @@ import pandas as pd
 import numpy as np
 
 orldata=pd.read_csv('D://frad_train.csv')
-
-
+orltest=pd.read_csv('D://frad_test.csv')
+orldata=orldata.append(orltest)
+del orltest
 feature=orldata.columns.values.tolist()
 orldata.astype(object)
 orldata.dtypes.value_counts()
@@ -36,7 +37,9 @@ for i in bin_columns_name:
     
 oh_columns=['province','dvctype','ntt','carrier','os','orientation','lan']
 orldata_oh=pd.get_dummies(orldata[oh_columns].astype('object'))
+orldata_oh=orldata_oh.reset_index(drop=True)
 orldata=orldata.join(orldata_oh)
+
 
 orldata=orldata.drop(columns=oh_columns)
 orldata=orldata.drop(columns='sid')
@@ -50,13 +53,16 @@ orldata['h']=(orldata['h']-orldata['h'].min())/(orldata['h'].max()-orldata['h'].
 orldata['w']=(orldata['w']-orldata['w'].min())/(orldata['w'].max()-orldata['w'].min())
 orldata['ppi']=(orldata['ppi']-orldata['ppi'].min())/(orldata['ppi'].max()-orldata['ppi'].min())
 
-orldata=orldata.values
-label=label.values
+orl_train=orldata[orldata['label']<2].drop(columns='label').values
+orl_test=orldata[orldata['label']==2].drop(columns='label').values
+
+del orldata
+label=label[label<2].values
 import lightgbm as lgb
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import f1_score
 
-X_train,X_test,y_train,y_test=train_test_split(orldata,label,random_state=0,test_size=0.2)
+X_train,X_test,y_train,y_test=train_test_split(orl_train,label,random_state=0,test_size=0.2)
 train_data=lgb.Dataset(X_train,label=y_train)
 validation_data=lgb.Dataset(X_test,label=y_test)
 params = {
@@ -68,8 +74,8 @@ params = {
 }
 clf=lgb.train(params,train_data,valid_sets=[validation_data])
 y_pred=clf.predict(X_test)
-y_pred[y_pred>0.9]=1
-y_pred[y_pred<0.1]=0
+y_pred[y_pred>0.5]=1
+y_pred[y_pred<0.5]=0
 print(f1_score(y_test, y_pred, average='micro'))
 
 #y=label.values
