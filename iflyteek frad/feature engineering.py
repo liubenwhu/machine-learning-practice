@@ -17,10 +17,7 @@ orldata.dtypes.value_counts()
 
 sample=orldata.iloc[0:100,:]
 
-t1=orldata.select_dtypes('object').apply(pd.Series.nunique, axis = 0)
-t2=orldata.select_dtypes('int64').apply(pd.Series.nunique, axis = 0)
-t3=orldata.select_dtypes('float64').apply(pd.Series.nunique, axis = 0)
-t4=orldata.select_dtypes('uint8').apply(pd.Series.nunique, axis = 0)
+
 
 from sklearn.feature_extraction import FeatureHasher
 
@@ -35,18 +32,27 @@ for i in bin_columns_name:
     orldata=orldata.join(hashed_features)
     orldata=orldata.drop(columns=i)
     
-oh_columns=['province','dvctype','ntt','carrier','os','orientation','lan']
+oh_columns=['os','lan']
 orldata_oh=pd.get_dummies(orldata[oh_columns].astype('object'))
 orldata_oh=orldata_oh.reset_index(drop=True)
 orldata=orldata.join(orldata_oh)
-
-
+#
+#
 orldata=orldata.drop(columns=oh_columns)
 orldata=orldata.drop(columns='sid')
 label=orldata['label']
-del orldata_oh
 orldata=orldata.drop(columns=['ip','adidmd5','imeimd5','macmd5'])
 
+
+t1=orldata.select_dtypes('object').apply(pd.Series.nunique, axis = 0)
+t2=orldata.select_dtypes('int64').apply(pd.Series.nunique, axis = 0)
+t3=orldata.select_dtypes('float64').apply(pd.Series.nunique, axis = 0)
+t4=orldata.select_dtypes('uint8').apply(pd.Series.nunique, axis = 0)
+
+for i2 in t3.index.tolist():
+    orldata[i2]=orldata[i2]-orldata[i2].min()
+orldata[t3.index]=orldata[t3.index].astype('int64')
+orldata[t4.index]=orldata[t4.index].astype('int64')
 
 orldata['nginxtime']=(orldata['nginxtime']-orldata['nginxtime'].min())/(orldata['nginxtime'].max()-orldata['nginxtime'].min())
 orldata['h']=(orldata['h']-orldata['h'].min())/(orldata['h'].max()-orldata['h'].min())
@@ -56,27 +62,41 @@ orldata['ppi']=(orldata['ppi']-orldata['ppi'].min())/(orldata['ppi'].max()-orlda
 orl_train=orldata[orldata['label']<2].drop(columns='label').values
 orl_test=orldata[orldata['label']==2].drop(columns='label').values
 
+
 del orldata
 label=label[label<2].values
 import lightgbm as lgb
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import f1_score
 
-X_train,X_test,y_train,y_test=train_test_split(orl_train,label,random_state=0,test_size=0.2)
-train_data=lgb.Dataset(X_train,label=y_train)
-validation_data=lgb.Dataset(X_test,label=y_test)
+X_train,X_test,y_train,y_test=train_test_split(orl_train,label,random_state=0,test_size=0.1)
+X_train1,X_tr,y_train1,y_tr=train_test_split(X_train,y_train,random_state=0,test_size=0.11)
+train_data = lgb.Dataset(X_train1, label=y_train1)
+validation_data=lgb.Dataset(X_tr,label=y_tr)
 params = {
     'task': 'train',
     'boosting_type': 'gbdt',  # 设置提升类型
     'objective': 'binary', # 目标函数
     'metric': {'l2', 'auc'},  # 评估函数
+    'max_bin':300,
+    
 
 }
-clf=lgb.train(params,train_data,valid_sets=[validation_data])
+def lgb_f1_score(y_hat, data):
+    y_true = data.get_label()
+    y_hat = np.round(y_hat) # scikits f1 doesn't like probabilities
+    return 'f1', f1_score(y_true, y_hat), True
+clf=lgb.train(params,train_data,valid_sets=[validation_data],feval=lgb_f1_score)
 y_pred=clf.predict(X_test)
 y_pred[y_pred>0.5]=1
 y_pred[y_pred<0.5]=0
-print(f1_score(y_test, y_pred, average='micro'))
+print(f1_score(y_test, y_pred, average='macro'))
+
+
+#y_pred=pd.DataFrame(y_pred)
+#y_pred.to_csv('D://new.csv')
+
+
 
 #y=label.values
 #X=orldata_v
